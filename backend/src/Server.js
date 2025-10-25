@@ -13,6 +13,12 @@ const app = express();
 app.use(
 	cors({
 		origin: `http://localhost:9100`,
+	}),
+	cors({
+		origin: `http://penguinore.net:9100`,
+	}),
+	cors({
+		origin: `http://status.penguinore.net:9100`,
 	})
 );
 
