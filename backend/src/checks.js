@@ -1,17 +1,29 @@
 import { execSync } from 'child_process';
 import fs from "fs";
 import path from "path";
+import fetch from "node-fetch";
 
 
 const DOCKER_CONTAINER_NAMES = [
-    'ideaprojects-mangia-backend-1',
-    'mrroboto'
+    'penguinhub-mangia-backend-1',
+    'penguinhub-mangia-frontend-1',
+    'penguinhub-yap-frontend-1',
+    'penguinhub-yap-backend-1',
+    'penguinhub-gelman-frontend-1',
+    'penguinhub-gelman-backend-1',
+    'penguinhub-authentication-1',
+    'penguinhub-discord_bot-1',
+    'mysql',
+    'photoprism-mariadb-1',
+    'sanity'
 ];
 
 const WEBSITE_URLS = [
-    'http://mangia.penguinore.net',
-    'http://yap.penguinore.net',
-    'http://silly.penguinore.net'
+    'http://mangia.penguinore.net/home',
+    'http://yap.penguinore.net/home',
+    'http://media.penguinore.net',
+    'http://gelman.penguinore.net',
+    'http://sanity.penguinore.net'
 ];
 
 const PATHS = [
@@ -151,7 +163,7 @@ const checkBackups = async () => {
         return null;
     }
     });
-    
+
     return results;
 }
 

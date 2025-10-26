@@ -5,7 +5,8 @@ const Dashboard = () => {
     const [status, setStatus] = useState(null);
 
     const fetchStatus = async () => {
-        const response = await fetch('http://localhost:9200/status');
+        const response = await fetch('http://penguinore.net:9200/status');
+        // const response = await fetch('http://localhost:9200/status');
         const data = await response.json();
         setStatus(data);
     };

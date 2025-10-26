@@ -10,7 +10,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:9100",
   "http://penguinore.net:9100",
-  "http://status.penguinore.net:9100"
+  "http://status.penguinore.net"
 ];
 
 // We are sending this back in all responses saying it's allowed to be used by our client
