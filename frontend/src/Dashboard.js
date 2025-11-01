@@ -1,18 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import Card from './Card';
 
+// const URL = 'http://penguinore.net:9200/';
+const URL = 'http://localhost:9200';
+
 const Dashboard = () => {
     const [status, setStatus] = useState(null);
+    const [websiteStatus, setWebsiteStatus] = useState(null);
 
     const fetchStatus = async () => {
-        const response = await fetch('http://penguinore.net:9200/status');
-        // const response = await fetch('http://localhost:9200/status');
+        const response = await fetch(`${URL}/status`);
         const data = await response.json();
         setStatus(data);
     };
 
+    const fetchWebsiteStatus = async () => {
+        const response = await fetch(`${URL}/websites`);
+        const data = await response.json();
+        setWebsiteStatus(data);
+    };
+
     useEffect(() => {
         fetchStatus();
+        fetchWebsiteStatus();
     }, []);
 
     if (!status) return <p>Loading...</p>;
@@ -28,7 +38,7 @@ const Dashboard = () => {
             </Card>
 
             <Card title="Websites">
-                <StatusBox name='Website' things={status.websites}/>
+                <StatusBox name='Website' things={websiteStatus}/>
             </Card>
 
             <Card title="Backups">
@@ -86,7 +96,7 @@ const StatusBox = ({name, things}) => {
                     }}>
                        <Icon status={c.status}/>
 
-                        <div style={{ flexGrow: 1 }}>
+                        <div title={c.hovertext} style={{ flexGrow: 1 }}>
                             <strong>{c.name}</strong>
                             <div style={{ fontSize: 12, color: "#666" }}>{c.details}</div>
                         </div>

@@ -2,48 +2,9 @@ import { execSync } from 'child_process';
 import fs from "fs";
 import path from "path";
 import fetch from "node-fetch";
+import dotenv from 'dotenv';
+dotenv.config();
 
-
-const DOCKER_CONTAINER_NAMES = [
-    'penguinhub-mangia-backend-1',
-    'penguinhub-mangia-frontend-1',
-    'penguinhub-yap-frontend-1',
-    'penguinhub-yap-backend-1',
-    'penguinhub-gelman-frontend-1',
-    'penguinhub-gelman-backend-1',
-    'penguinhub-authentication-1',
-    'penguinhub-discord_bot-1',
-    'mysql',
-    'photoprism-mariadb-1',
-    'sanity'
-];
-
-const WEBSITE_URLS = [
-    'http://mangia.penguinore.net/home',
-    'http://yap.penguinore.net/home',
-    'http://media.penguinore.net',
-    'http://gelman.penguinore.net',
-    'http://sanity.penguinore.net'
-];
-
-const PATHS = [
-    {
-        name: "Authentication",
-        path: "/home/mmiles/IdeaProjects/authentication/"
-    },
-    { 
-        name: "Pictures",
-        path: "/home/mmiles/Pictures/NEW.txt"
-    },
-    {
-        name: "DatabaseSQL",
-        path: "/home/mmiles/Downloads/all-databases.sql"
-    },
-    {
-        name: "Love",
-        path: "/home/love"
-    }
-];
 
 const getDiskUsage = () => {
     try {
@@ -76,7 +37,9 @@ const getDockerStatus = () => {
             }, {}
         );
 
-        const results = DOCKER_CONTAINER_NAMES.map((name) => ({
+        const dockerContainerArray = JSON.parse(fs.readFileSync(process.env.DOCKER_CONTAINER_JSON, 'utf8'));
+
+        const results = dockerContainerArray.map((name) => ({
             name,
             status: !!running[name] ? "up" : "down",
             details: running[name] || "stopped",
@@ -91,12 +54,15 @@ const getDockerStatus = () => {
 }
 
 const checkWebsites = async () => {
-    const results = await Promise.all(WEBSITE_URLS.map(async (url) => {
-        const name = url;
+    const websiteArray = JSON.parse(fs.readFileSync(process.env.WEBSITES_JSON, 'utf8'));
+
+    const results = await Promise.all(websiteArray.map(async (obj) => {
+        const name = obj.name;
+        const url = obj.url;
         let status;
         let details;
         try {
-            const response = await fetch(url, { method: "HEAD", timeout: 5000 });
+            const response = await fetch(url);
             status = response.ok ? "up" : "down";
             details = response.status;
         } catch (err) {
@@ -106,6 +72,7 @@ const checkWebsites = async () => {
 
         return {
             name,
+            hovertext: url,
             status,
             details
         };
@@ -115,53 +82,61 @@ const checkWebsites = async () => {
 }
 
 const checkBackups = async () => {
-    const results = PATHS.map((obj) => {
-    const p = obj.path;
-    const name = obj.name;
-    try {
-        let status;
-        let details;
-        
-        if (!fs.existsSync(p)) {
-            status = 'down';
-            details = 'missing'
-        } else {
-            let latestMtime = 0;
+    const backupsArray = JSON.parse(fs.readFileSync(process.env.BACKUPS_JSON, 'utf8'));
+    const results = backupsArray.map((obj) => {
+        const p = obj.path;
+        const name = obj.name;
+        const ignoreStale = obj.ignoreStale;
 
-            const stats = fs.statSync(p);
-
-            if (stats.isDirectory()) {
-                const files = fs.readdirSync(p);
-                files.forEach((file) => {
-                    const fstats = fs.statSync(path.join(p, file));
-                    if (fstats.mtimeMs > latestMtime) {
-                        latestMtime = fstats.mtimeMs;
-                    }
-                });
-            } else if (stats.isFile()) {
-                latestMtime = stats.mtimeMs;
+        try {
+            let status;
+            let details;
+            
+            if (!fs.existsSync(p)) {
+                status = 'down';
+                details = 'missing'
             } else {
-                status = "unknown type";
+                if( ignoreStale ) {
+                    status = 'up';
+                    details = "Online"
+                } else {
+                    let latestMtime = 0;
+
+                    const stats = fs.statSync(p);
+
+                    if (stats.isDirectory()) {
+                        const files = fs.readdirSync(p);
+                        files.forEach((file) => {
+                            const fstats = fs.statSync(path.join(p, file));
+                            if (fstats.mtimeMs > latestMtime) {
+                                latestMtime = fstats.mtimeMs;
+                            }
+                        });
+                    } else if (stats.isFile()) {
+                        latestMtime = stats.mtimeMs;
+                    } else {
+                        status = "unknown type";
+                    }
+
+                    const lastUpdated = new Date(latestMtime);
+                    const now = new Date();
+                    const diffHours = (now - lastUpdated) / 1000 / 60 / 60;
+                    const recent = diffHours <= 24;
+                    const hoursAgoLabel = `(${diffHours.toFixed(0)} hours ago)`;
+                    status = recent ? 'up' : 'warn';
+                    details = recent ? `ok ${hoursAgoLabel}` : `stale ${hoursAgoLabel}`;
+                }
             }
 
-            const lastUpdated = new Date(latestMtime);
-            const now = new Date();
-            const diffHours = (now - lastUpdated) / 1000 / 60 / 60;
-            const recent = diffHours <= 24;
-            const hoursAgoLabel = `(${diffHours.toFixed(0)} hours ago)`;
-            status = recent ? 'up' : 'warn';
-            details = recent ? `ok ${hoursAgoLabel}` : `stale ${hoursAgoLabel}`;
+            return {
+                name,
+                status,
+                details
+            };
+        } catch (err) {
+            console.log("Backup Check Error", err);
+            return null;
         }
-
-        return {
-            name,
-            status,
-            details
-        };
-    } catch (err) {
-        console.log("Backup Check Error", err);
-        return null;
-    }
     });
 
     return results;
@@ -171,13 +146,17 @@ const getSystemStatus = async () => {
     const dateOutput = execSync("date").toString().trim();
 
     return {
-        disk: await getDiskUsage(),
+        disk: getDiskUsage(),
         docker: await getDockerStatus(),
         websites: await checkWebsites(),
         backups: await checkBackups(),
         // Add backup check or last modified date as needed
         date: dateOutput
     };
+}
+
+export const getWebsiteStatus = async () => {
+    return await checkWebsites();
 }
 
 export default getSystemStatus;
