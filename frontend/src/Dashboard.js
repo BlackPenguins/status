@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import Card from './Card';
 
-// const URL = 'http://penguinore.net:9200/';
-const URL = 'http://localhost:9200';
+const URL = 'http://penguinore.net:9200';
+//const URL = 'http://localhost:9200';
 
 const Dashboard = () => {
     const [status, setStatus] = useState(null);
